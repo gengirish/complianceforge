@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
 import { db } from "@/server/db";
+import { authOptions } from "@/lib/next-auth";
 
 const AUTH_COOKIE = "cf_auth";
 
@@ -17,7 +19,7 @@ interface DbUser {
   organizationId: string;
 }
 
-export async function getAuthUser(): Promise<AuthUser | null> {
+async function getCookieAuthUser(): Promise<AuthUser | null> {
   try {
     const cookieStore = await cookies();
     const auth = cookieStore.get(AUTH_COOKIE);
@@ -28,13 +30,28 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   }
 }
 
+export async function getAuthUser(): Promise<AuthUser | null> {
+  const cookieUser = await getCookieAuthUser();
+  if (cookieUser) return cookieUser;
+
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email;
+  if (!email) return null;
+
+  return {
+    email,
+    name: session.user.name ?? email.split("@")[0] ?? "User",
+    role: session.user.role ?? "admin",
+  };
+}
+
 export async function setAuthCookie(user: AuthUser): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE, JSON.stringify(user), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
     path: "/",
   });
 }
@@ -45,7 +62,15 @@ export async function clearAuthCookie(): Promise<void> {
 }
 
 export async function getOrCreateDbUser(): Promise<DbUser | null> {
-  const authUser = await getAuthUser();
+  const session = await getServerSession(authOptions);
+  if (session?.user?.id) {
+    const bySession = await db.user.findUnique({
+      where: { id: session.user.id },
+    });
+    if (bySession) return bySession;
+  }
+
+  const authUser = await getCookieAuthUser();
   if (!authUser) return null;
 
   try {

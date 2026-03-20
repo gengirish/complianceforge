@@ -7,6 +7,10 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
+import type { Route } from "next";
+import { getAuthUser } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 const ENFORCEMENT_DATE = new Date("2026-08-02T00:00:00Z");
 
@@ -61,9 +65,21 @@ const features = [
   },
 ];
 
-const pricingTiers = [
+type LandingPlanKey = "free" | "starter" | "growth" | "enterprise";
+
+const pricingTiers: Array<{
+  name: string;
+  planKey: LandingPlanKey;
+  price: string;
+  period: string;
+  systems: string;
+  features: string[];
+  cta: string;
+  highlighted: boolean;
+}> = [
   {
     name: "Free",
+    planKey: "free",
     price: "€0",
     period: "forever",
     systems: "Up to 3 AI systems",
@@ -77,6 +93,7 @@ const pricingTiers = [
   },
   {
     name: "Starter",
+    planKey: "starter",
     price: "€99",
     period: "/month",
     systems: "Up to 15 AI systems",
@@ -91,6 +108,7 @@ const pricingTiers = [
   },
   {
     name: "Growth",
+    planKey: "growth",
     price: "€299",
     period: "/month",
     systems: "Up to 100 AI systems",
@@ -106,6 +124,7 @@ const pricingTiers = [
   },
   {
     name: "Enterprise",
+    planKey: "enterprise",
     price: "€999",
     period: "/month",
     systems: "Unlimited AI systems",
@@ -122,8 +141,18 @@ const pricingTiers = [
   },
 ];
 
-export default function LandingPage() {
+function pricingHref(
+  user: Awaited<ReturnType<typeof getAuthUser>>,
+  planKey: LandingPlanKey
+): string {
+  if (!user) return "/login";
+  if (planKey === "free") return "/dashboard";
+  return `/api/stripe/checkout?plan=${planKey}`;
+}
+
+export default async function LandingPage() {
   const daysRemaining = getDaysRemaining();
+  const user = await getAuthUser();
 
   return (
     <div className="min-h-screen bg-background">
@@ -237,15 +266,16 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                className={`w-full rounded-lg px-4 py-2 font-semibold transition ${
+              <Link
+                href={pricingHref(user, tier.planKey) as Route}
+                className={`block w-full rounded-lg px-4 py-2 text-center font-semibold transition ${
                   tier.highlighted
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "border border-border hover:bg-accent"
                 }`}
               >
                 {tier.cta}
-              </button>
+              </Link>
             </div>
           ))}
         </div>

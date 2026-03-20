@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Server,
+  GitBranch,
   Shield,
   FileText,
   ScrollText,
@@ -12,6 +14,8 @@ import {
   LogOut,
   AlertTriangle,
   Clock,
+  Calendar,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions";
@@ -19,9 +23,13 @@ import { logoutAction } from "@/server/actions";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { name: "AI Inventory", href: "/inventory", icon: Server },
+  { name: "GitHub Scanner", href: "/scanner", icon: GitBranch },
   { name: "Risk Classifier", href: "/classifier", icon: Shield },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Audit Trail", href: "/audit", icon: ScrollText },
+  { name: "Incidents", href: "/incidents", icon: AlertTriangle },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Conformity", href: "/conformity", icon: ClipboardCheck },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -53,7 +61,7 @@ export function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href as Route}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive

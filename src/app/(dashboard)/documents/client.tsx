@@ -147,13 +147,27 @@ export function DocumentsClient({
           {selectedSystem && !viewingDoc && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Annex IV Documentation — {selectedSystem.name}
-                </CardTitle>
-                <CardDescription>
-                  17 required sections per Article 11. Generate individually or
-                  view existing.
-                </CardDescription>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1.5">
+                    <CardTitle className="text-base">
+                      Annex IV Documentation — {selectedSystem.name}
+                    </CardTitle>
+                    <CardDescription>
+                      17 required sections per Article 11. Generate individually or
+                      view existing.
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0" asChild>
+                    <a
+                      href={`/api/export/${selectedSystem.id}?format=html`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Compliance Pack
+                    </a>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">

@@ -31,7 +31,10 @@ export interface SystemMetadata {
   deploymentRegion?: string;
 }
 
-function mockClassify(system: SystemMetadata): RiskClassificationResult {
+/** Rule-based classifier used on Free plan and when the API is unavailable. */
+export function mockClassifyRiskTier(
+  system: SystemMetadata
+): RiskClassificationResult {
   const s = system.sector.toLowerCase();
   const u = system.useCase.toLowerCase();
 
@@ -155,7 +158,7 @@ export async function classifyRiskTier(
   const anthropic = getClient();
 
   if (!anthropic) {
-    return mockClassify(system);
+    return mockClassifyRiskTier(system);
   }
 
   try {
@@ -199,13 +202,13 @@ Respond with ONLY valid JSON (no markdown, no code fences):
 
     const textBlock = message.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
-      return mockClassify(system);
+      return mockClassifyRiskTier(system);
     }
 
     return JSON.parse(textBlock.text) as RiskClassificationResult;
   } catch (error) {
     console.error("Claude API error, using mock classifier:", error);
-    return mockClassify(system);
+    return mockClassifyRiskTier(system);
   }
 }
 

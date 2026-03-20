@@ -131,7 +131,75 @@ async function main() {
     }
   }
 
-  console.log(`Seeded: 1 org, 1 user, ${systems.length} AI systems`);
+  // Seed sample incidents
+  const allSystems = await prisma.aiSystem.findMany({
+    where: { organizationId: org.id },
+  });
+  const highRiskSystem = allSystems.find((s) => s.name.includes("Credit"));
+  if (highRiskSystem) {
+    await prisma.incident.create({
+      data: {
+        aiSystemId: highRiskSystem.id,
+        reporterId: user.id,
+        title: "Biased scoring for minority applicants",
+        description:
+          "Statistical audit revealed disproportionate denial rates for applicants from certain postal codes, indicating potential proxy discrimination in the credit scoring model.",
+        severity: "critical",
+        status: "investigating",
+        occurredAt: new Date("2026-02-15"),
+        detectedAt: new Date("2026-03-01"),
+      },
+    });
+
+    await prisma.incident.create({
+      data: {
+        aiSystemId: highRiskSystem.id,
+        reporterId: user.id,
+        title: "Model drift detected in Q1 predictions",
+        description:
+          "Performance monitoring shows accuracy degradation from 94% to 87% over the last quarter, likely due to changing economic conditions not reflected in training data.",
+        severity: "high",
+        status: "open",
+        occurredAt: new Date("2026-03-10"),
+        detectedAt: new Date("2026-03-15"),
+      },
+    });
+  }
+
+  // Seed compliance deadlines
+  await prisma.complianceDeadline.create({
+    data: {
+      title: "EU AI Act full enforcement deadline",
+      description:
+        "The EU AI Act becomes fully enforceable. All high-risk AI systems must be compliant.",
+      dueDate: new Date("2026-08-02"),
+      status: "pending",
+      priority: "critical",
+      category: "enforcement",
+      organizationId: org.id,
+    },
+  });
+
+  if (highRiskSystem) {
+    await prisma.complianceDeadline.create({
+      data: {
+        title: "Complete Annex IV documentation",
+        description:
+          "Technical documentation required under Annex IV of the EU AI Act for high-risk AI systems.",
+        dueDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        status: "pending",
+        priority: "high",
+        category: "documentation",
+        aiSystemId: highRiskSystem.id,
+        assigneeId: user.id,
+        organizationId: org.id,
+      },
+    });
+  }
+
+  console.log(
+    `Seeded: 1 org, 1 user, ${systems.length} AI systems, 2 incidents, 2 deadlines`
+  );
 }
 
 main()

@@ -20,7 +20,12 @@ import {
   ScrollText,
 } from "lucide-react";
 import Link from "next/link";
+import type { Route } from "next";
 import { DashboardCharts } from "./charts";
+import {
+  ComplianceScoresSection,
+  loadComplianceScoreRows,
+} from "./compliance-scores";
 
 async function getStats(orgId: string) {
   const systems = await db.aiSystem.findMany({
@@ -72,7 +77,16 @@ export default async function DashboardPage() {
   const user = await getOrCreateDbUser();
   if (!user) return <SetupPrompt />;
 
-  const stats = await getStats(user.organizationId);
+  const [stats, scoreRows] = await Promise.all([
+    getStats(user.organizationId),
+    loadComplianceScoreRows(user.organizationId),
+  ]);
+  const orgComplianceAverage =
+    scoreRows.length > 0
+      ? Math.round(
+          scoreRows.reduce((sum, r) => sum + r.score, 0) / scoreRows.length
+        )
+      : 0;
   const daysRemaining = getDaysUntilEnforcement();
 
   const statCards = [
@@ -92,9 +106,9 @@ export default async function DashboardPage() {
     },
     {
       title: "Avg. Compliance Score",
-      value: `${stats.avgScore}%`,
+      value: `${orgComplianceAverage}%`,
       icon: TrendingUp,
-      color: stats.avgScore >= 60 ? "text-green-400" : "text-red-400",
+      color: orgComplianceAverage >= 60 ? "text-green-400" : "text-red-400",
       href: "/inventory",
     },
     {
@@ -118,7 +132,7 @@ export default async function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
-          <Link key={card.title} href={card.href}>
+          <Link key={card.title} href={card.href as Route}>
             <Card className="transition-colors hover:border-primary/30">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -142,6 +156,11 @@ export default async function DashboardPage() {
       <DashboardCharts
         riskData={stats.byRiskTier}
         statusData={stats.byStatus}
+      />
+
+      <ComplianceScoresSection
+        rows={scoreRows}
+        orgAverage={orgComplianceAverage}
       />
 
       {/* Quick Actions + Recent Activity */}
