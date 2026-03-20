@@ -1,0 +1,39 @@
+---
+description: Security and data protection rules for GDPR and EU AI Act compliance
+globs: 
+alwaysApply: true
+---
+
+# Security Rules
+
+## Secrets
+- Never hardcode API keys, tokens, or credentials
+- Use environment variables via `process.env` with validation at startup
+- Never log secrets — redact before logging
+- `.env` files must be in `.gitignore`
+
+## Authentication
+- All API routes must use `protectedProcedure` (tRPC) or auth middleware
+- No `localStorage` for auth tokens — use httpOnly cookies
+- Enforce RBAC: check `ctx.user.role` before data access
+- Rate limit auth endpoints (login, register, password reset)
+
+## Data Handling
+- Encrypt PII at rest using AES-256
+- Validate all inputs with Zod schemas before processing
+- Sanitize HTML content to prevent XSS
+- Set `Content-Security-Policy` headers
+- Use parameterized queries (Prisma handles this)
+
+## Audit Logging
+- Every state-changing operation must create an audit log entry
+- Audit logs are append-only — never delete or update
+- Include: userId, action, resource, timestamp, ipAddress, changes
+- Redact PII in log entries where possible
+
+## AI Integration
+- Never expose Anthropic API key to client-side code
+- Validate and sanitize all prompts sent to Claude
+- Rate limit AI classification endpoints
+- Log all AI API calls with request/response metadata (redact PII)
+- Set maximum token limits on all Claude API calls

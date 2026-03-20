@@ -1,0 +1,60 @@
+---
+description: TypeScript coding standards for ComplianceForge — strict mode, tRPC patterns, Prisma conventions
+globs: **/*.ts,**/*.tsx
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## Strict Configuration
+- `strict: true` in tsconfig — no exceptions
+- No `any` types — use `unknown` with type guards instead
+- Explicit return types on exported functions
+- `noUncheckedIndexedAccess: true`
+
+## Naming
+- **Files**: kebab-case (`risk-classifier.ts`, `audit-trail.tsx`)
+- **Components**: PascalCase (`RiskClassifier`, `AuditTrail`)
+- **Functions/variables**: camelCase (`classifyRisk`, `auditEntries`)
+- **Types/Interfaces**: PascalCase with no prefix (`AiSystem`, not `IAiSystem`)
+- **Constants**: SCREAMING_SNAKE for true constants (`MAX_RETRY_COUNT`)
+- **Enums**: PascalCase members (`RiskTier.High`, not `RiskTier.HIGH`)
+
+## Patterns
+
+### Zod Schemas
+Define Zod schemas alongside types. Derive types from schemas, not the reverse:
+```typescript
+const aiSystemSchema = z.object({
+  name: z.string().min(1).max(255),
+  sector: z.enum(["healthcare", "finance", "education", "law_enforcement"]),
+  riskTier: z.enum(["unacceptable", "high", "limited", "minimal"]),
+});
+type AiSystem = z.infer<typeof aiSystemSchema>;
+```
+
+### tRPC Routers
+Keep routers thin — delegate logic to service modules:
+```typescript
+export const systemRouter = router({
+  classify: protectedProcedure
+    .input(classifyInputSchema)
+    .mutation(({ input, ctx }) => classifySystem(input, ctx.userId)),
+});
+```
+
+### Error Handling
+Use custom error classes with error codes. Never swallow errors silently:
+```typescript
+throw new TRPCError({
+  code: "BAD_REQUEST",
+  message: "AI system name is required",
+  cause: validationError,
+});
+```
+
+### Prisma
+- Use transactions for multi-table writes
+- Always select only needed fields (no `findMany()` without `select`)
+- Use `createMany` for bulk operations
+- Audit log writes must be in the same transaction as the action

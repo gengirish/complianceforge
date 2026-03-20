@@ -1,0 +1,36 @@
+---
+description: Prisma ORM conventions and database patterns for ComplianceForge
+globs: prisma/**,src/**/*.ts
+alwaysApply: false
+---
+
+# Prisma Conventions
+
+## Schema Design
+- Use `uuid` for all primary keys (`@default(uuid())`)
+- Include `createdAt` and `updatedAt` on every model
+- Use enums for fixed value sets (RiskTier, ComplianceStatus)
+- Add database indexes on frequently queried columns
+- Use `@@map` for snake_case table names, camelCase in Prisma
+
+## Relationships
+- Always define both sides of relations
+- Use cascade delete only where semantically correct
+- Soft-delete for compliance data (add `deletedAt DateTime?`)
+
+## Queries
+- Always use `select` to limit returned fields
+- Use `include` sparingly — prefer separate queries for complex joins
+- Wrap multi-table writes in `$transaction`
+- Use `createMany` for bulk inserts
+
+## Migrations
+- Name migrations descriptively: `add-risk-tier-to-ai-systems`
+- Never edit a deployed migration — create a new one
+- Test migrations against production-like data volumes
+- Back up database before running migrations in production
+
+## Multi-tenancy
+- Every model with user data must have `organizationId`
+- All queries must filter by `organizationId` from auth context
+- Create middleware to enforce tenant isolation

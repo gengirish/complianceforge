@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String?
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  aiSystems AiSystem[]
+  auditLogs AuditLog[]
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  name           String?
+  role           String   @default("admin")
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessments  Assessment[]
+  documents    Document[]
+  auditLogs    AuditLog[]
+  incidents    Incident[]
+}
+
+model AiSystem {
+  id               String   @id @default(uuid())
+  name             String
+  description      String?
+  sector           String
+  useCase          String
+  provider         String?
+  version          String?
+  dataInputs       String?
+  decisionImpact   String?
+  endUsers         String?
+  deploymentRegion String   @default("EU")
+  riskTier         String   @default("unassessed")
+  complianceStatus String   @default("not_started")
+  complianceScore  Int      @default(0)
+  organizationId   String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessments  Assessment[]
+  documents    Document[]
+  incidents    Incident[]
+  auditLogs    AuditLog[]
+}
+
+model Assessment {
+  id                   String   @id @default(uuid())
+  aiSystemId           String
+  assessorId           String
+  type                 String   @default("self_assessment")
+  riskTier             String
+  confidence           Float
+  justification        String
+  keyArticles          String   @default("[]")
+  requirements         String   @default("[]")
+  recommendations      String   @default("[]")
+  exceptionsConsidered String?
+  annexIiiCategory     String?
+  complianceGaps       String?
+  rawResponse          String?
+  createdAt            DateTime @default(now())
+
+  aiSystem AiSystem @relation(fields: [aiSystemId], references: [id], onDelete: Cascade)
+  assessor User     @relation(fields: [assessorId], references: [id])
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  aiSystemId String
+  authorId   String
+  title      String
+  type       String
+  section    Int      @default(0)
+  version    Int      @default(1)
+  content    String
+  status     String   @default("draft")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  aiSystem AiSystem @relation(fields: [aiSystemId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id])
+}
+
+model Incident {
+  id            String   @id @default(uuid())
+  aiSystemId    String
+  reporterId    String
+  title         String
+  description   String
+  severity      String   @default("medium")
+  status        String   @default("open")
+  reportedToNca Boolean  @default(false)
+  ncaReportDate DateTime?
+  rootCause     String?
+  remediation   String?
+  occurredAt    DateTime
+  detectedAt    DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  aiSystem AiSystem @relation(fields: [aiSystemId], references: [id], onDelete: Cascade)
+  reporter User     @relation(fields: [reporterId], references: [id])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  organizationId String
+  aiSystemId     String?
+  action         String
+  resource       String
+  resourceId     String?
+  details        String?
+  createdAt      DateTime @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  aiSystem     AiSystem?     @relation(fields: [aiSystemId], references: [id])
+}

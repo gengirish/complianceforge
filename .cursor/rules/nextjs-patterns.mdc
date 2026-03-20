@@ -1,0 +1,43 @@
+---
+description: Next.js App Router patterns and conventions for ComplianceForge
+globs: src/app/**/*.tsx,src/app/**/*.ts
+alwaysApply: false
+---
+
+# Next.js App Router Patterns
+
+## File Conventions
+- `page.tsx` — route pages (server components by default)
+- `layout.tsx` — shared layouts with nested routing
+- `loading.tsx` — Suspense loading UI
+- `error.tsx` — error boundary (`"use client"`)
+- `not-found.tsx` — 404 pages
+
+## Server vs Client
+- Default to server components — only add `"use client"` when needed
+- Client components needed for: event handlers, hooks, browser APIs
+- Keep client components small — push logic to server where possible
+- Use `server actions` for form submissions and mutations
+
+## Data Fetching
+- Fetch data in server components, pass to client components as props
+- Use tRPC for type-safe API calls from client components
+- Cache aggressively — use `revalidate` for ISR where applicable
+- Never fetch in `useEffect` for initial data — use server components
+
+## Route Groups
+```
+src/app/
+  (auth)/          — login, register, forgot-password
+  (dashboard)/     — authenticated app pages
+    inventory/
+    classifier/
+    documents/
+    audit/
+    settings/
+  api/             — API routes (tRPC handler)
+```
+
+## Metadata
+- Set `metadata` export on every page for SEO
+- Use `generateMetadata` for dynamic pages
