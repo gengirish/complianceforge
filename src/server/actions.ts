@@ -10,14 +10,14 @@ import type { RiskClassificationResult } from "@/lib/claude";
 // ─── Auth ────────────────────────────────────────────────────────────────
 
 export async function loginAction(formData: FormData) {
-  const email = formData.get("email") as string;
-  const name = formData.get("name") as string;
+  const email = (formData.get("email") ?? "") as string;
+  const name = (formData.get("name") ?? "") as string;
 
   if (!email) throw new Error("Email is required");
 
   await setAuthCookie({
     email,
-    name: name || email.split("@")[0],
+    name: name || email.split("@")[0] || "User",
     role: "admin",
   });
 
