@@ -9,6 +9,9 @@ const PROTECTED_PATHS = [
   "/audit",
   "/settings",
   "/incidents",
+  "/scanner",
+  "/calendar",
+  "/conformity",
 ];
 
 export function proxy(request: NextRequest) {
@@ -43,6 +46,9 @@ export const config = {
     "/audit/:path*",
     "/settings/:path*",
     "/incidents/:path*",
+    "/scanner/:path*",
+    "/calendar/:path*",
+    "/conformity/:path*",
     "/login",
   ],
 };

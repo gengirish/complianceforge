@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
-import { getServerSession } from "next-auth";
 import { db } from "@/server/db";
-import { authOptions } from "@/lib/next-auth";
+import { env } from "@/lib/env";
 
 const AUTH_COOKIE = "cf_auth";
 
@@ -30,11 +29,22 @@ async function getCookieAuthUser(): Promise<AuthUser | null> {
   }
 }
 
+async function getNextAuthSession() {
+  if (!env.NEXTAUTH_SECRET) return null;
+  try {
+    const { getServerSession } = await import("next-auth");
+    const { authOptions } = await import("@/lib/next-auth");
+    return await getServerSession(authOptions);
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthUser(): Promise<AuthUser | null> {
   const cookieUser = await getCookieAuthUser();
   if (cookieUser) return cookieUser;
 
-  const session = await getServerSession(authOptions);
+  const session = await getNextAuthSession();
   const email = session?.user?.email;
   if (!email) return null;
 
@@ -62,7 +72,7 @@ export async function clearAuthCookie(): Promise<void> {
 }
 
 export async function getOrCreateDbUser(): Promise<DbUser | null> {
-  const session = await getServerSession(authOptions);
+  const session = await getNextAuthSession();
   if (session?.user?.id) {
     const bySession = await db.user.findUnique({
       where: { id: session.user.id },
