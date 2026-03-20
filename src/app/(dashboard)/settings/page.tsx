@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getAuthUser } from "@/lib/auth";
 import { getDaysUntilEnforcement } from "@/lib/utils";
 import {

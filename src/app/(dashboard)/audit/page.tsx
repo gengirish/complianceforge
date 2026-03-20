@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/server/db";
 import { getOrCreateDbUser } from "@/lib/auth";
 import {
