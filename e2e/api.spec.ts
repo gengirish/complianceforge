@@ -21,7 +21,7 @@ test.describe("API Key Management", () => {
 
   test("shows API documentation section", async ({ page }) => {
     await expect(
-      page.locator("text=Documentation").first()
+      page.locator("text=REST API").first()
     ).toBeVisible();
   });
 });

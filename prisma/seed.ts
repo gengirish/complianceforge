@@ -7,11 +7,12 @@ async function main() {
 
   const org = await prisma.organization.upsert({
     where: { id: "demo-org-001" },
-    update: {},
+    update: { maxSystems: 100 },
     create: {
       id: "demo-org-001",
       name: "Demo Organization",
       plan: "growth",
+      maxSystems: 100,
     },
   });
 
