@@ -51,6 +51,44 @@ export const generateDocumentSchema = z.object({
 });
 export type GenerateDocumentInput = z.infer<typeof generateDocumentSchema>;
 
+export const createIncidentSchema = z.object({
+  aiSystemId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
+  severity: z.enum(["critical", "high", "medium", "low"]).default("medium"),
+  occurredAt: z.string().datetime({ offset: true }).or(z.string().min(1)),
+  detectedAt: z.string().datetime({ offset: true }).or(z.string().min(1)),
+});
+
+export const createDeadlineSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  dueDate: z.string().min(1),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  category: z
+    .enum([
+      "documentation",
+      "assessment",
+      "registration",
+      "risk_management",
+      "transparency",
+      "enforcement",
+      "general",
+    ])
+    .default("general"),
+  aiSystemId: z.string().uuid().optional().or(z.literal("")),
+  assigneeId: z.string().uuid().optional().or(z.literal("")),
+});
+
+export const updateIncidentStatusSchema = z.object({
+  status: z.enum(["open", "investigating", "resolved", "closed"]),
+});
+
+export const inviteTeamMemberSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["admin", "editor", "viewer"]).default("editor"),
+});
+
 export interface ComplianceSummary {
   totalSystems: number;
   byRiskTier: Record<RiskTier, number>;

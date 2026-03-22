@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { loginAsDemo, expectNoServerError } from "./helpers";
 
 test.describe("GitHub Scanner", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.click("text=Launch Demo");
-    await page.waitForURL("**/dashboard", { timeout: 30000 });
+    await loginAsDemo(page);
+    await expectNoServerError(page);
     await page.goto("/scanner");
     await page.waitForURL("**/scanner", { timeout: 30000 });
+    await expectNoServerError(page);
   });
 
   test("displays scanner heading", async ({ page }) => {
@@ -14,13 +15,13 @@ test.describe("GitHub Scanner", () => {
   });
 
   test("shows repository input field", async ({ page }) => {
-    await expect(
+    await expect.soft(
       page.locator('input[placeholder*="owner/repo"]').first()
     ).toBeVisible();
   });
 
   test("shows scan button", async ({ page }) => {
-    await expect(
+    await expect.soft(
       page.locator("button:has-text('Scan')").first()
     ).toBeVisible();
   });

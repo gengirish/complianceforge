@@ -18,7 +18,14 @@ import {
   scanRepository,
   type ScanFinding,
 } from "@/lib/github-scanner";
-import { EU_AI_ACT_SECTORS } from "@/types";
+import {
+  EU_AI_ACT_SECTORS,
+  createAiSystemSchema,
+  createDeadlineSchema,
+  createIncidentSchema,
+  inviteTeamMemberSchema,
+  updateIncidentStatusSchema,
+} from "@/types";
 import { generateApiKey } from "@/lib/api-auth";
 import {
   sendClassificationResult,
@@ -38,6 +45,9 @@ import {
   isPaidPlan,
   normalizeOrgPlan,
 } from "@/lib/stripe";
+import { createChildLogger } from "@/lib/logger";
+
+const actionsLogger = createChildLogger("actions");
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -100,12 +110,18 @@ export async function inviteTeamMemberAction(email: string, role: string) {
     throw new Error("You do not have permission to invite members");
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail || !normalizedEmail.includes("@")) {
-    throw new Error("Valid email is required");
+  const inviteParsed = inviteTeamMemberSchema.safeParse({
+    email: email.trim(),
+    role: role || undefined,
+  });
+  if (!inviteParsed.success) {
+    throw new Error(
+      `Validation failed: ${inviteParsed.error.issues.map((i) => i.message).join(", ")}`
+    );
   }
 
-  const r = normalizeRole(role);
+  const normalizedEmail = inviteParsed.data.email.trim().toLowerCase();
+  const r = normalizeRole(inviteParsed.data.role);
   if (!ROLES.includes(r)) throw new Error("Invalid role");
 
   const existingMember = await db.user.findFirst({
@@ -154,7 +170,9 @@ export async function inviteTeamMemberAction(email: string, role: string) {
     org.name,
     inviteUrl,
     org.agentmailInboxId
-  ).catch((err) => console.warn("[email] team invite:", err));
+  ).catch((err) =>
+    actionsLogger.warn({ err }, "Team invite email failed after invitation create")
+  );
 
   await logAudit(
     user.id,
@@ -354,7 +372,9 @@ export async function resendInvitationAction(invitationId: string) {
     org.name,
     inviteUrl,
     org.agentmailInboxId
-  ).catch((err) => console.warn("[email] team invite resend:", err));
+  ).catch((err) =>
+    actionsLogger.warn({ err }, "Team invite resend email failed")
+  );
 
   revalidatePath("/settings/team");
 }
@@ -491,18 +511,67 @@ export async function createSystemAction(formData: FormData) {
     );
   }
 
+  const systemRaw = {
+    name: ((formData.get("name") as string) ?? "").trim(),
+    description: (() => {
+      const v = (formData.get("description") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    sector: ((formData.get("sector") as string) ?? "").trim(),
+    useCase: ((formData.get("useCase") as string) ?? "").trim(),
+    provider: (() => {
+      const v = (formData.get("provider") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    version: (() => {
+      const v = (formData.get("version") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    dataInputs: (() => {
+      const v = (formData.get("dataInputs") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    decisionImpact: (() => {
+      const v = (formData.get("decisionImpact") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    endUsers: (() => {
+      const v = (formData.get("endUsers") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    deploymentRegion: (() => {
+      const v = (formData.get("deploymentRegion") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+  };
+
+  const systemParsed = createAiSystemSchema.safeParse(systemRaw);
+  if (!systemParsed.success) {
+    throw new Error(
+      `Validation failed: ${systemParsed.error.issues.map((i) => i.message).join(", ")}`
+    );
+  }
+
+  const d = systemParsed.data;
   const system = await db.aiSystem.create({
     data: {
-      name: formData.get("name") as string,
-      description: (formData.get("description") as string) || null,
-      sector: formData.get("sector") as string,
-      useCase: formData.get("useCase") as string,
-      provider: (formData.get("provider") as string) || null,
-      version: (formData.get("version") as string) || null,
-      dataInputs: (formData.get("dataInputs") as string) || null,
-      decisionImpact: (formData.get("decisionImpact") as string) || null,
-      endUsers: (formData.get("endUsers") as string) || null,
-      deploymentRegion: (formData.get("deploymentRegion") as string) || "EU",
+      name: d.name,
+      description: d.description ?? null,
+      sector: d.sector,
+      useCase: d.useCase,
+      provider: d.provider ?? null,
+      version: d.version ?? null,
+      dataInputs: d.dataInputs ?? null,
+      decisionImpact: d.decisionImpact ?? null,
+      endUsers: d.endUsers ?? null,
+      deploymentRegion: d.deploymentRegion,
       organizationId: user.organizationId,
     },
   });
@@ -676,7 +745,7 @@ export async function classifySystemAction(
       )
     )
     .catch((err) =>
-      console.warn("[email] classification notification:", err)
+      actionsLogger.warn({ err }, "Classification notification email failed")
     );
 
   return result;
@@ -783,27 +852,37 @@ export async function createIncidentAction(formData: FormData) {
   const user = await getOrCreateDbUser();
   if (!user) throw new Error("Not authenticated");
 
-  const aiSystemId = (formData.get("aiSystemId") as string) || "";
+  const incidentRaw = {
+    aiSystemId: ((formData.get("aiSystemId") as string) ?? "").trim(),
+    title: ((formData.get("title") as string) ?? "").trim(),
+    description: ((formData.get("description") as string) ?? "").trim(),
+    severity: (() => {
+      const s = (formData.get("severity") as string) ?? "";
+      const t = s.trim().toLowerCase();
+      return t === "" ? undefined : t;
+    })(),
+    occurredAt: ((formData.get("occurredAt") as string) ?? "").trim(),
+    detectedAt: ((formData.get("detectedAt") as string) ?? "").trim(),
+  };
+
+  const incidentParsed = createIncidentSchema.safeParse(incidentRaw);
+  if (!incidentParsed.success) {
+    throw new Error(
+      `Validation failed: ${incidentParsed.error.issues.map((i) => i.message).join(", ")}`
+    );
+  }
+
+  const { aiSystemId, title, description, severity } = incidentParsed.data;
   const system = await db.aiSystem.findFirst({
     where: { id: aiSystemId, organizationId: user.organizationId },
   });
   if (!system) throw new Error("AI system not found");
 
-  const title = ((formData.get("title") as string) ?? "").trim();
-  const description = ((formData.get("description") as string) ?? "").trim();
-  if (!title || !description) throw new Error("Title and description are required");
-
-  const occurredAt = new Date(formData.get("occurredAt") as string);
-  const detectedAt = new Date(formData.get("detectedAt") as string);
+  const occurredAt = new Date(incidentParsed.data.occurredAt);
+  const detectedAt = new Date(incidentParsed.data.detectedAt);
   if (Number.isNaN(occurredAt.getTime()) || Number.isNaN(detectedAt.getTime())) {
     throw new Error("Invalid occurred or detected date");
   }
-
-  const severityRaw = ((formData.get("severity") as string) || "medium").toLowerCase();
-  const allowedSeverity = ["critical", "high", "medium", "low"] as const;
-  const severity = allowedSeverity.includes(severityRaw as (typeof allowedSeverity)[number])
-    ? severityRaw
-    : "medium";
 
   const incident = await db.incident.create({
     data: {
@@ -847,7 +926,9 @@ export async function createIncidentAction(formData: FormData) {
         org?.agentmailInboxId
       )
     )
-    .catch((err) => console.warn("[email] incident alert:", err));
+    .catch((err) =>
+      actionsLogger.warn({ err }, "Incident alert email failed")
+    );
 
   await persistComplianceScore(aiSystemId);
 
@@ -860,10 +941,13 @@ export async function updateIncidentStatusAction(incidentId: string, status: str
   const user = await getOrCreateDbUser();
   if (!user) throw new Error("Not authenticated");
 
-  const allowed = ["open", "investigating", "resolved", "closed"] as const;
-  if (!allowed.includes(status as (typeof allowed)[number])) {
-    throw new Error("Invalid status");
+  const statusParsed = updateIncidentStatusSchema.safeParse({ status });
+  if (!statusParsed.success) {
+    throw new Error(
+      `Validation failed: ${statusParsed.error.issues.map((i) => i.message).join(", ")}`
+    );
   }
+  const { status: nextStatus } = statusParsed.data;
 
   const existing = await db.incident.findFirst({
     where: {
@@ -876,7 +960,7 @@ export async function updateIncidentStatusAction(incidentId: string, status: str
 
   await db.incident.update({
     where: { id: incidentId },
-    data: { status },
+    data: { status: nextStatus },
   });
 
   await logAudit(
@@ -886,7 +970,7 @@ export async function updateIncidentStatusAction(incidentId: string, status: str
     "incident",
     incidentId,
     existing.aiSystemId,
-    `Updated incident status to ${status}: ${existing.title}`
+    `Updated incident status to ${nextStatus}: ${existing.title}`
   );
 
   await persistComplianceScore(existing.aiSystemId);
@@ -1089,54 +1173,67 @@ export async function importScanFindingAction(
 
 // ─── Compliance Calendar ─────────────────────────────────────────────────
 
-const DEADLINE_CATEGORIES = new Set([
-  "general",
-  "documentation",
-  "assessment",
-  "registration",
-  "risk_management",
-  "transparency",
-  "enforcement",
-]);
-
-const DEADLINE_PRIORITIES = new Set(["low", "medium", "high"]);
-
 export async function createDeadlineAction(formData: FormData) {
   const user = await getOrCreateDbUser();
   if (!user) throw new Error("Not authenticated");
 
-  const title = ((formData.get("title") as string) ?? "").trim();
-  if (!title) throw new Error("Title is required");
+  const deadlineRaw = {
+    title: ((formData.get("title") as string) ?? "").trim(),
+    description: (() => {
+      const v = (formData.get("description") as string) ?? "";
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    })(),
+    dueDate: ((formData.get("dueDate") as string) ?? "").trim(),
+    priority: (() => {
+      const s = (formData.get("priority") as string) ?? "";
+      const t = s.trim().toLowerCase();
+      return t === "" ? undefined : t;
+    })(),
+    category: (() => {
+      const s = (formData.get("category") as string) ?? "";
+      const t = s.trim().toLowerCase();
+      return t === "" ? undefined : t;
+    })(),
+    aiSystemId: (() => {
+      const v = ((formData.get("aiSystemId") as string) ?? "").trim();
+      return v === "" ? "" : v;
+    })(),
+    assigneeId: (() => {
+      const v = ((formData.get("assigneeId") as string) ?? "").trim();
+      return v === "" ? "" : v;
+    })(),
+  };
 
-  const dueRaw = formData.get("dueDate") as string;
-  const dueDate = new Date(dueRaw);
+  const deadlineParsed = createDeadlineSchema.safeParse(deadlineRaw);
+  if (!deadlineParsed.success) {
+    throw new Error(
+      `Validation failed: ${deadlineParsed.error.issues.map((i) => i.message).join(", ")}`
+    );
+  }
+
+  const { title, description: descOpt, priority, category } = deadlineParsed.data;
+  const description = descOpt ?? null;
+
+  const dueDate = new Date(deadlineParsed.data.dueDate);
   if (Number.isNaN(dueDate.getTime())) throw new Error("Invalid due date");
 
-  const descriptionRaw = (formData.get("description") as string) ?? "";
-  const description = descriptionRaw.trim() || null;
-
-  const priorityRaw = ((formData.get("priority") as string) || "medium").toLowerCase();
-  const priority = DEADLINE_PRIORITIES.has(priorityRaw) ? priorityRaw : "medium";
-
-  const categoryRaw = ((formData.get("category") as string) || "general").toLowerCase();
-  const category = DEADLINE_CATEGORIES.has(categoryRaw) ? categoryRaw : "general";
-
-  const aiSystemIdRaw = ((formData.get("aiSystemId") as string) ?? "").trim();
+  const aiSystemIdField = deadlineParsed.data.aiSystemId;
   let aiSystemId: string | null = null;
-  if (aiSystemIdRaw) {
+  if (aiSystemIdField && aiSystemIdField !== "") {
     const sys = await db.aiSystem.findFirst({
-      where: { id: aiSystemIdRaw, organizationId: user.organizationId },
+      where: { id: aiSystemIdField, organizationId: user.organizationId },
       select: { id: true },
     });
     if (!sys) throw new Error("AI system not found");
     aiSystemId = sys.id;
   }
 
-  const assigneeIdRaw = ((formData.get("assigneeId") as string) ?? "").trim();
+  const assigneeIdField = deadlineParsed.data.assigneeId;
   let assigneeId: string | null = null;
-  if (assigneeIdRaw) {
+  if (assigneeIdField && assigneeIdField !== "") {
     const assignee = await db.user.findFirst({
-      where: { id: assigneeIdRaw, organizationId: user.organizationId },
+      where: { id: assigneeIdField, organizationId: user.organizationId },
       select: { id: true },
     });
     if (!assignee) throw new Error("Assignee not found");

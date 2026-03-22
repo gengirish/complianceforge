@@ -1,5 +1,8 @@
 import { AgentMailClient } from "agentmail";
 import { env } from "@/lib/env";
+import { createChildLogger } from "@/lib/logger";
+
+const emailLogger = createChildLogger("email");
 import {
   classificationResultTemplate,
   deadlineReminderTemplate,
@@ -30,12 +33,13 @@ function agentmailDomain(): string {
 }
 
 function warnNoKey(context: string): void {
-  console.warn(`[email] ${context}: AGENTMAIL_API_KEY not set; skipping send.`);
+  emailLogger.warn({ context }, "AGENTMAIL_API_KEY not set; skipping send.");
 }
 
 function warnNoInbox(context: string): void {
-  console.warn(
-    `[email] ${context}: no organization AgentMail inbox configured; skipping send.`
+  emailLogger.warn(
+    { context },
+    "No organization AgentMail inbox configured; skipping send."
   );
 }
 
@@ -68,8 +72,7 @@ export async function sendComplianceEmail(
     });
     return true;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[email] sendComplianceEmail failed: ${msg}`);
+    emailLogger.warn({ err }, "sendComplianceEmail failed");
     return false;
   }
 }

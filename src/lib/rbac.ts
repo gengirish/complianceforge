@@ -51,7 +51,6 @@ const matrix: Record<Role, ReadonlySet<Action>> = {
     "conformity:view",
     "conformity:manage",
     "settings:view",
-    "settings:api",
     "export:run",
   ]),
   viewer: new Set<Action>([
@@ -74,8 +73,8 @@ export function normalizeRole(role: string): Role {
 }
 
 export function checkPermission(role: string, action: string): boolean {
-  const r = normalizeRole(role);
-  const allowed = matrix[r];
-  if (!allowed) return false;
+  const r = role.toLowerCase();
+  if (r !== "admin" && r !== "editor" && r !== "viewer") return false;
+  const allowed = matrix[r as Role];
   return allowed.has(action as Action);
 }

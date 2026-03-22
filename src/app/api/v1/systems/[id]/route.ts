@@ -1,50 +1,76 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { withRateLimit } from "@/lib/api-middleware";
 import { validateApiKey } from "@/lib/api-auth";
+import { addCorsHeaders, handleCorsPreFlight } from "@/lib/cors";
 import { db } from "@/server/db";
 
-function notFound() {
-  return NextResponse.json({ error: "System not found" }, { status: 404 });
+function notFound(request: Request) {
+  return addCorsHeaders(
+    NextResponse.json({ error: "System not found" }, { status: 404 }),
+    request
+  );
 }
 
-function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 });
+function badRequest(request: Request, message: string) {
+  return addCorsHeaders(NextResponse.json({ error: message }, { status: 400 }), request);
 }
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+export async function OPTIONS(req: Request) {
+  return handleCorsPreFlight(req);
+}
+
 export async function GET(request: Request, { params }: RouteParams) {
+  const token =
+    request.headers.get("authorization")?.replace("Bearer ", "") ??
+    request.headers.get("x-forwarded-for") ??
+    "anonymous";
+  const rateLimited = withRateLimit(request, token);
+  if (!rateLimited.ok) return addCorsHeaders(rateLimited.response, request);
+
   const auth = await validateApiKey(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return addCorsHeaders(auth.response, request);
 
   const { id } = await params;
   const system = await db.aiSystem.findFirst({
     where: { id, organizationId: auth.ctx.organization.id },
   });
-  if (!system) return notFound();
+  if (!system) return notFound(request);
 
-  return NextResponse.json({ data: system }, { status: 200 });
+  return addCorsHeaders(
+    NextResponse.json({ data: system }, { status: 200, headers: rateLimited.headers }),
+    request
+  );
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
+  const token =
+    request.headers.get("authorization")?.replace("Bearer ", "") ??
+    request.headers.get("x-forwarded-for") ??
+    "anonymous";
+  const rateLimited = withRateLimit(request, token);
+  if (!rateLimited.ok) return addCorsHeaders(rateLimited.response, request);
+
   const auth = await validateApiKey(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return addCorsHeaders(auth.response, request);
 
   const { id } = await params;
   const existing = await db.aiSystem.findFirst({
     where: { id, organizationId: auth.ctx.organization.id },
   });
-  if (!existing) return notFound();
+  if (!existing) return notFound(request);
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return badRequest("Invalid JSON body");
+    return badRequest(request, "Invalid JSON body");
   }
 
   if (!body || typeof body !== "object") {
-    return badRequest("Expected a JSON object");
+    return badRequest(request, "Expected a JSON object");
   }
 
   const o = body as Record<string, unknown>;
@@ -64,20 +90,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   if ("name" in o) {
     if (typeof o.name !== "string" || !o.name.trim()) {
-      return badRequest("name must be a non-empty string");
+      return badRequest(request, "name must be a non-empty string");
     }
     data.name = o.name.trim();
   }
   setNullableString("description", o.description);
   if ("sector" in o) {
     if (typeof o.sector !== "string" || !o.sector.trim()) {
-      return badRequest("sector must be a non-empty string");
+      return badRequest(request, "sector must be a non-empty string");
     }
     data.sector = o.sector.trim();
   }
   if ("useCase" in o) {
     if (typeof o.useCase !== "string" || !o.useCase.trim()) {
-      return badRequest("useCase must be a non-empty string");
+      return badRequest(request, "useCase must be a non-empty string");
     }
     data.useCase = o.useCase.trim();
   }
@@ -88,7 +114,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   setNullableString("endUsers", o.endUsers);
   if ("deploymentRegion" in o) {
     if (typeof o.deploymentRegion !== "string" || !o.deploymentRegion.trim()) {
-      return badRequest("deploymentRegion must be a non-empty string");
+      return badRequest(request, "deploymentRegion must be a non-empty string");
     }
     data.deploymentRegion = o.deploymentRegion.trim();
   }
@@ -113,7 +139,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   if (Object.keys(data).length === 0) {
-    return badRequest("No valid fields to update");
+    return badRequest(request, "No valid fields to update");
   }
 
   const system = await db.aiSystem.update({
@@ -121,20 +147,36 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     data,
   });
 
-  return NextResponse.json({ data: system }, { status: 200 });
+  return addCorsHeaders(
+    NextResponse.json({ data: system }, { status: 200, headers: rateLimited.headers }),
+    request
+  );
 }
 
 export async function DELETE(request: Request, { params }: RouteParams) {
+  const token =
+    request.headers.get("authorization")?.replace("Bearer ", "") ??
+    request.headers.get("x-forwarded-for") ??
+    "anonymous";
+  const rateLimited = withRateLimit(request, token);
+  if (!rateLimited.ok) return addCorsHeaders(rateLimited.response, request);
+
   const auth = await validateApiKey(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return addCorsHeaders(auth.response, request);
 
   const { id } = await params;
   const existing = await db.aiSystem.findFirst({
     where: { id, organizationId: auth.ctx.organization.id },
   });
-  if (!existing) return notFound();
+  if (!existing) return notFound(request);
 
   await db.aiSystem.delete({ where: { id } });
 
-  return NextResponse.json({ data: { id, deleted: true } }, { status: 200 });
+  return addCorsHeaders(
+    NextResponse.json(
+      { data: { id, deleted: true } },
+      { status: 200, headers: rateLimited.headers }
+    ),
+    request
+  );
 }

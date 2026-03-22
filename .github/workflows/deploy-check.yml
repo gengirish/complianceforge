@@ -1,0 +1,50 @@
+name: Post-Deploy Verification
+
+on:
+  deployment_status:
+
+jobs:
+  verify:
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health Check
+        run: |
+          DEPLOYMENT_URL="${{ github.event.deployment_status.target_url }}"
+          echo "Checking: $DEPLOYMENT_URL/api/health"
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$DEPLOYMENT_URL/api/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              curl -sf "$DEPLOYMENT_URL/api/health" | jq .
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS, waiting 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
+
+      - name: Smoke Test - Landing Page
+        run: |
+          DEPLOYMENT_URL="${{ github.event.deployment_status.target_url }}"
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$DEPLOYMENT_URL" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "Landing page returned HTTP $STATUS"
+            exit 1
+          fi
+          echo "Landing page OK"
+
+      - name: Smoke Test - Security Headers
+        run: |
+          DEPLOYMENT_URL="${{ github.event.deployment_status.target_url }}"
+          HEADERS=$(curl -sI "$DEPLOYMENT_URL")
+          echo "$HEADERS"
+          echo "$HEADERS" | grep -qi "x-content-type-options: nosniff" || { echo "Missing X-Content-Type-Options"; exit 1; }
+          echo "Security headers present"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "::error::Post-deployment verification failed for ${{ github.event.deployment_status.target_url }}"

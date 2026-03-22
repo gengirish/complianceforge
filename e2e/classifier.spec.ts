@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { loginAsDemo, expectNoServerError } from "./helpers";
 
 test.describe("Risk Classifier", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.click("text=Launch Demo");
-    await page.waitForURL("**/dashboard", { timeout: 30000 });
+    await loginAsDemo(page);
+    await expectNoServerError(page);
     await page.goto("/classifier");
     await page.waitForURL("**/classifier", { timeout: 30000 });
+    await expectNoServerError(page);
   });
 
   test("displays classifier page heading", async ({ page }) => {
@@ -14,17 +15,17 @@ test.describe("Risk Classifier", () => {
   });
 
   test("shows article references in subtitle", async ({ page }) => {
-    await expect(page.locator("text=Articles 5, 6").first()).toBeVisible();
+    await expect.soft(page.locator("text=Articles 5, 6").first()).toBeVisible();
   });
 
   test("shows system selector panel", async ({ page }) => {
-    await expect(
+    await expect.soft(
       page.getByText("Select AI System", { exact: true })
     ).toBeVisible();
   });
 
   test("lists available systems", async ({ page }) => {
-    await expect(
+    await expect.soft(
       page.locator("text=Customer Credit Scoring Engine").first()
     ).toBeVisible();
   });
@@ -35,10 +36,10 @@ test.describe("Risk Classifier", () => {
       .click();
 
     await expect(page.locator("text=System Details")).toBeVisible();
-    await expect(
+    await expect.soft(
       page.locator("text=Financial Services").first()
     ).toBeVisible();
-    await expect(
+    await expect.soft(
       page.locator('button:has-text("Classify Risk Tier")')
     ).toBeVisible();
   });

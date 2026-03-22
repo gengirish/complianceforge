@@ -1,21 +1,22 @@
 import { test, expect } from "@playwright/test";
+import { loginAsDemo, expectNoServerError } from "./helpers";
 
 test.describe("Document Generator", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.click("text=Launch Demo");
-    await page.waitForURL("**/dashboard", { timeout: 15000 });
+    await loginAsDemo(page);
+    await expectNoServerError(page);
     await page.goto("/documents");
-    await page.waitForURL("**/documents", { timeout: 10000 });
+    await page.waitForURL("**/documents", { timeout: 30000 });
+    await expectNoServerError(page);
   });
 
   test("displays documents page heading", async ({ page }) => {
     await expect(page.locator("h1")).toContainText("Document Generator");
-    await expect(page.locator("h1 ~ p").first()).toContainText("Annex IV");
+    await expect.soft(page.locator("h1 ~ p").first()).toContainText("Annex IV");
   });
 
   test("shows system selector", async ({ page }) => {
-    await expect(page.locator("text=Select AI System")).toBeVisible();
+    await expect.soft(page.locator("text=Select AI System")).toBeVisible();
   });
 
   test("selecting a system shows Annex IV sections", async ({ page }) => {
@@ -24,17 +25,17 @@ test.describe("Document Generator", () => {
       .click();
 
     await expect(page.locator("text=General Description")).toBeVisible();
-    await expect(page.locator("text=Risk Management")).toBeVisible();
-    await expect(page.locator("text=Data Governance")).toBeVisible();
-    await expect(page.locator("text=Human Oversight")).toBeVisible();
-    await expect(page.locator("text=Change Log")).toBeVisible();
+    await expect.soft(page.locator("text=Risk Management")).toBeVisible();
+    await expect.soft(page.locator("text=Data Governance")).toBeVisible();
+    await expect.soft(page.locator("text=Human Oversight")).toBeVisible();
+    await expect.soft(page.locator("text=Change Log")).toBeVisible();
   });
 
   test("shows progress bar", async ({ page }) => {
     await page
       .locator("button:has-text('Customer Credit Scoring Engine')")
       .click();
-    await expect(page.locator("text=Progress:")).toBeVisible();
+    await expect.soft(page.locator("text=Progress:")).toBeVisible();
   });
 
   test("generate a document section", async ({ page }) => {
@@ -48,7 +49,7 @@ test.describe("Document Generator", () => {
     await generateBtn.click();
 
     await expect(page.locator("text=Generating...").first()).toBeVisible();
-    await expect(page.locator("text=draft").first()).toBeVisible({
+    await expect.soft(page.locator("text=draft").first()).toBeVisible({
       timeout: 15000,
     });
   });

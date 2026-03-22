@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { loginAsDemo, expectNoServerError } from "./helpers";
 
 test.describe("Audit Trail", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.click("text=Launch Demo");
-    await page.waitForURL("**/dashboard", { timeout: 30000 });
+    await loginAsDemo(page);
+    await expectNoServerError(page);
     await page.goto("/audit");
     await page.waitForURL("**/audit", { timeout: 30000 });
+    await expectNoServerError(page);
   });
 
   test("displays audit trail heading", async ({ page }) => {
@@ -14,17 +15,17 @@ test.describe("Audit Trail", () => {
   });
 
   test("shows activity log with entries", async ({ page }) => {
-    await expect(
+    await expect.soft(
       page.getByText("Activity Log", { exact: true })
     ).toBeVisible();
   });
 
   test("shows article 12 reference", async ({ page }) => {
-    await expect(page.locator("text=Article 12").first()).toBeVisible();
+    await expect.soft(page.locator("text=Article 12").first()).toBeVisible();
   });
 
   test("audit entries show action badges", async ({ page }) => {
-    await expect(page.locator("text=create").first()).toBeVisible({
+    await expect.soft(page.locator("text=create").first()).toBeVisible({
       timeout: 10000,
     });
   });

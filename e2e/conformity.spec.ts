@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { loginAsDemo, expectNoServerError } from "./helpers";
 
 test.describe("Conformity Assessment", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.click("text=Launch Demo");
-    await page.waitForURL("**/dashboard", { timeout: 30000 });
+    await loginAsDemo(page);
+    await expectNoServerError(page);
     await page.goto("/conformity");
     await page.waitForURL("**/conformity", { timeout: 30000 });
+    await expectNoServerError(page);
   });
 
   test("displays conformity heading", async ({ page }) => {
@@ -14,7 +15,7 @@ test.describe("Conformity Assessment", () => {
   });
 
   test("shows high-risk systems for assessment", async ({ page }) => {
-    await expect(
+    await expect.soft(
       page.locator("text=high").first()
     ).toBeVisible({ timeout: 10000 });
   });

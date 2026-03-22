@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { loginAsDemo, expectNoServerError } from "./helpers";
 
 test.describe("AI System Inventory", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.click("text=Launch Demo");
-    await page.waitForURL("**/dashboard", { timeout: 15000 });
+    await loginAsDemo(page);
+    await expectNoServerError(page);
     await page.goto("/inventory");
-    await page.waitForURL("**/inventory", { timeout: 10000 });
+    await page.waitForURL("**/inventory", { timeout: 30000 });
+    await expectNoServerError(page);
   });
 
   test("displays inventory page heading", async ({ page }) => {
@@ -14,13 +15,11 @@ test.describe("AI System Inventory", () => {
   });
 
   test("shows add system button", async ({ page }) => {
-    await expect(page.locator("text=Add System")).toBeVisible();
+    await expect.soft(page.locator("text=Add System")).toBeVisible();
   });
 
   test("has search input", async ({ page }) => {
-    const search = page.locator(
-      'input[placeholder*="Search systems"]'
-    );
+    const search = page.locator('input[placeholder*="Search systems"]');
     await expect(search).toBeVisible();
   });
 
@@ -31,25 +30,21 @@ test.describe("AI System Inventory", () => {
       "Customer Support Chatbot",
     ];
     for (const name of systems) {
-      await expect(page.locator(`text=${name}`).first()).toBeVisible();
+      await expect.soft(page.locator(`text=${name}`).first()).toBeVisible();
     }
   });
 
   test("table shows risk tier badges", async ({ page }) => {
-    await expect(page.locator("text=High").first()).toBeVisible();
-    await expect(page.locator("text=Limited").first()).toBeVisible();
-    await expect(page.locator("text=Minimal").first()).toBeVisible();
+    await expect.soft(page.locator("text=High").first()).toBeVisible();
+    await expect.soft(page.locator("text=Limited").first()).toBeVisible();
+    await expect.soft(page.locator("text=Minimal").first()).toBeVisible();
   });
 
   test("search filters systems", async ({ page }) => {
-    const search = page.locator(
-      'input[placeholder*="Search systems"]'
-    );
+    const search = page.locator('input[placeholder*="Search systems"]');
     await search.fill("Credit");
-    await expect(
-      page.locator("text=Customer Credit Scoring Engine")
-    ).toBeVisible();
-    await expect(
+    await expect(page.locator("text=Customer Credit Scoring Engine")).toBeVisible();
+    await expect.soft(
       page.locator("text=Resume Screening AI")
     ).not.toBeVisible();
   });
@@ -59,12 +54,12 @@ test.describe("AI System Inventory", () => {
     await expect(
       page.locator("text=Register New AI System")
     ).toBeVisible();
-    await expect(
+    await expect.soft(
       page.locator('input[name="name"]').nth(0)
     ).toBeVisible();
 
     await page.click("text=Cancel");
-    await expect(
+    await expect.soft(
       page.locator("text=Register New AI System")
     ).not.toBeVisible();
   });
