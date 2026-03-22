@@ -22,7 +22,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "@auth/prisma-adapter": "^2.11.1",
-    "@prisma/client": "^6.19.2",
+    "@prisma/client": "^7.5.0",
     "@radix-ui/react-dialog": "latest",
     "@radix-ui/react-dropdown-menu": "latest",
     "@radix-ui/react-label": "latest",
