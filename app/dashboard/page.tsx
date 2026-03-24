@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, LayoutDashboard, Server, Github, CheckSquare, Calendar, FileText, LogOut, Menu, X, Plus, ChevronDown, ChevronUp, Copy, ExternalLink, RefreshCw } from 'lucide-react'
+import { Shield, LayoutDashboard, Server, GitBranch, CheckSquare, Calendar, FileText, LogOut, Menu, X, Plus, ChevronDown, ChevronUp, Copy, ExternalLink, RefreshCw } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { cn, API_URL, daysUntil, urgencyColor, urgencyBg, riskBadgeColor, scoreColor, scoreBarColor } from '@/lib/utils'
 
@@ -10,7 +10,7 @@ const ENFORCEMENT_DATE = '2026-08-02'
 const TABS = [
   { id: 'command', label: 'Command Center', icon: LayoutDashboard },
   { id: 'inventory', label: 'AI Inventory', icon: Server },
-  { id: 'scanner', label: 'GitHub Scanner', icon: Github },
+  { id: 'scanner', label: 'GitHub Scanner', icon: GitBranch },
   { id: 'tracker', label: 'Compliance Tracker', icon: CheckSquare },
   { id: 'calendar', label: 'Deadlines', icon: Calendar },
   { id: 'reports', label: 'Reports', icon: FileText },
@@ -58,6 +58,7 @@ export default function Dashboard() {
     loadSystems()
     loadOrgs()
     loadCalendar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function loadStats() {
@@ -494,7 +495,7 @@ export default function Dashboard() {
             <div className="space-y-6">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-2">
-                  <Github className="w-6 h-6 text-white" />
+                  <GitBranch className="w-6 h-6 text-white" />
                   <h2 className="text-lg font-semibold text-white">GitHub Repository Scanner</h2>
                 </div>
                 <p className="text-slate-400 text-sm mb-6">Scan any public GitHub repository for EU AI Act compliance gaps. Detects AI frameworks and analyzes against Articles 9-14.</p>
@@ -530,7 +531,7 @@ export default function Dashboard() {
                     {scanLoading ? (
                       <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Scanning...</>
                     ) : (
-                      <><Github className="w-4 h-4" /> Scan for Compliance</>
+                      <><GitBranch className="w-4 h-4" /> Scan for Compliance</>
                     )}
                   </button>
                 </div>

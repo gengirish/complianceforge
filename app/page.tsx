@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, CheckCircle, X, Clock, Zap, Github, FileText, Calendar, Users } from 'lucide-react'
+import { Shield, CheckCircle, X, Clock, Zap, GitBranch, FileText, Calendar, Users } from 'lucide-react'
 import { daysUntil } from '@/lib/utils'
 
 const ENFORCEMENT_DATE = '2026-08-02'
@@ -56,7 +56,7 @@ export default function LoginPage() {
             <a href="#features" className="hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
             <a href="https://github.com/gengirish/complianceforge" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-white transition-colors">
-              <Github className="w-4 h-4" /> GitHub
+              <GitBranch className="w-4 h-4" /> GitHub
             </a>
           </div>
         </nav>
@@ -86,7 +86,7 @@ export default function LoginPage() {
             {/* Key features */}
             <div className="grid grid-cols-2 gap-3 mb-10">
               {[
-                { icon: Github, label: 'GitHub Repo Scanner' },
+                { icon: GitBranch, label: 'GitHub Repo Scanner' },
                 { icon: Zap, label: 'Gemini AI Classification' },
                 { icon: FileText, label: 'Compliance Certificates' },
                 { icon: Calendar, label: 'Deadline Alerts' },
